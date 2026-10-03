@@ -6,40 +6,34 @@
 .DS_Store
 .atom/
 .buildlog/
-.history
+.history/
 .svn/
 migrate_working_dir/
 
-# IntelliJ related
+# IntelliJ / Android Studio
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code
+# Keep .vscode in version control if you want to distribute
+# launch configurations/tasks with the package.
+# .vscode/
 
-# Flutter/Dart/Pub related
-# Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
-/pubspec.lock
-**/doc/api/
+# Flutter / Dart / Pub
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
-/build/
-/coverage/
-
-.dart_tool/
 .packages
 .pub/
 build/
 coverage/
 
+# Pub package lock
 pubspec.lock
 
-.idea/
-.vscode/
+# Generated API documentation
+**/doc/api/
 
-*.iml
-.DS_Store
+# DO NOT ignore example/

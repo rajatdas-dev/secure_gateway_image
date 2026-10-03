@@ -1,11 +1,18 @@
-example/
-test/
+# Generated Dart/Flutter files
+.dart_tool/
+.packages
+.pub/
+build/
 coverage/
 
-.github/
+# IDE/editor files
 .idea/
 .vscode/
-
-analysis_options.yaml
-
 *.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated documentation
+**/doc/api/

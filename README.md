@@ -965,7 +965,7 @@ Flutter Developer | Mobile Application Developer
 
 Created and maintained by Rajat Das.
 
-GitHub: https://github.com/YOUR_USERNAME
+GitHub: https://github.com/rajatdas_dev
 
 ---
 
