@@ -1,0 +1,11 @@
+example/
+test/
+coverage/
+
+.github/
+.idea/
+.vscode/
+
+analysis_options.yaml
+
+*.iml
