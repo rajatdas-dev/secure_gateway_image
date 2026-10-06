@@ -2,7 +2,7 @@
 
 > Error-resilient image fallback widget for Flutter.
 
-**Created and maintained by [Rajat Das](https://github.com/rajatdas_dev).**
+**Created and maintained by [Rajat Das](https://github.com/rajatdas-dev).**
 
 An error-resilient Flutter image widget with a deterministic fallback pipeline:
 
@@ -24,13 +24,16 @@ An error-resilient Flutter image widget with a deterministic fallback pipeline:
 ## ✨ Features
 
 - 🌐 Network image as the primary source
+- 🔁 Configurable network retry logic (max 3s default retry window)
 - 💾 Local `ImageProvider` fallback
 - 📦 Flutter asset fallback
 - 👤 Animated initials avatar as the final fallback
+- 🎨 Creative fallback avatar when user initials are not provided
+- ⚠️ Comprehensive error messaging & typed error metadata
 - 🎨 Deterministic avatar colors
 - ✨ Animated avatar entrance
-- 🧩 Custom avatar builder
-- ⏳ Loading placeholder support
+- 🧩 Custom avatar and creative fallback builders
+- ⏳ Loading and retrying placeholder support
 - 🔐 Network request headers
 - 🖼️ Image decoding controls
 - ♿ Accessibility support
@@ -40,6 +43,34 @@ An error-resilient Flutter image widget with a deterministic fallback pipeline:
 - 🚫 No state-management dependency
 - 🔒 Null-safe
 - 🧪 Testable and deterministic
+
+---
+
+# 💡 Why secure_gateway_image?
+
+In production applications (chat feeds, social apps, profile screens, product catalogs, and user directories), image loading fails frequently due to spotty mobile networks, expired S3/CDN URLs, deleted assets, or incomplete user data. 
+
+Handling these edge cases manually across every widget requires dozens of lines of repetitive boilerplate. `secure_gateway_image` solves these real-world problems out of the box:
+
+### 1. 📶 Resilient Against Transient Network Drops
+- **The Problem**: Standard Flutter `Image.network` fails immediately on temporary connection drops, slow DNS, or cell tower handoffs.
+- **The Solution**: Built-in **3-second retry logic** automatically attempts retries with backoff and image cache eviction before giving up.
+
+### 2. 🛡️ Zero Broken-Image UI
+- **The Problem**: Expired URLs or 404s result in ugly grey error boxes or empty whitespace.
+- **The Solution**: Multi-tier deterministic fallback (`Network → Local Cache → Asset → Initials Avatar → Creative Fallback`) ensures your UI is always complete and polished.
+
+### 3. 🎨 Deterministic Avatars Without Database Bloat
+- **The Problem**: Storing custom avatar background colors for every user in your database creates unnecessary schema complexity.
+- **The Solution**: Avatar colors are generated deterministically using a name/seed hash—so "Alex Johnson" consistently gets the same signature hue across the entire application without any backend storage.
+
+### 4. ✨ Creative Fallbacks for Anonymous / Incomplete Profiles
+- **The Problem**: Guest accounts, system bots, or incomplete user profiles often lack both a profile picture and a name/initials.
+- **The Solution**: When initials are absent, the widget renders **creative fallback avatars** (gradient glow, abstract geometric patterns, glassmorphic cards, or mesh gradients) with an error badge and tooltip.
+
+### 5. 🪶 Zero Bloat & Architectural Freedom
+- **The Problem**: Heavy image packages bundle monolithic caching engines, SQLite/Hive databases, or opinionated HTTP clients that create dependency conflicts.
+- **The Solution**: `secure_gateway_image` has **zero third-party runtime dependencies** and accepts any standard `ImageProvider`, leaving caching architecture decisions to your application layer.
 
 ---
 
@@ -378,6 +409,100 @@ SecureGatewayImage(
 ```
 
 The custom builder is used only when all image sources fail.
+
+---
+
+# 🔁 Retry Logic (Max 3 Seconds)
+
+`secure_gateway_image` includes built-in retry logic that automatically retries failed network image fetches for a configurable window (defaults to **3 seconds**).
+
+```dart
+SecureGatewayImage(
+  networkUrl: 'https://example.com/photo.jpg',
+  initials: 'Rajat Das',
+  size: 64,
+  // Retry options:
+  enableRetry: true,
+  retryDuration: const Duration(seconds: 3), // Max 3s retry window
+  retryInterval: const Duration(milliseconds: 1000), // 1s between retries
+  onRetry: (attempt, elapsed) {
+    debugPrint('Retry attempt #$attempt ($elapsed elapsed)');
+  },
+  onError: (errorMessage, error, stackTrace) {
+    debugPrint('Permanent failure: $errorMessage');
+  },
+)
+```
+
+If the image fails after retrying for 3 seconds, retries stop and the widget gracefully falls back to:
+1. Local cache (if provided)
+2. Asset (if provided)
+3. User initials avatar (if `initials` was set)
+4. Creative fallback avatar (if `initials` was not set)
+
+---
+
+# 🎨 Creative Fallback Avatar (When Initials Are Not Set)
+
+If every image source fails and the user did **not** set initials (or left `initials` empty/null), `secure_gateway_image` renders a creative, aesthetically designed fallback avatar instead of a generic broken image.
+
+```dart
+SecureGatewayImage(
+  networkUrl: 'https://invalid.example.com/avatar.png',
+  // initials omitted or null
+  size: 80,
+  creativeFallbackStyle: CreativeFallbackStyle.gradientGlow,
+  showErrorBadge: true, // Displays an error badge with tooltip
+)
+```
+
+### Available Creative Styles
+
+- `CreativeFallbackStyle.gradientGlow`: Dynamic multi-stop gradient with glowing accent, glassmorphic icon pill, and soft shadow.
+- `CreativeFallbackStyle.abstractPattern`: Procedural geometric pattern and decorative accents.
+- `CreativeFallbackStyle.glassmorphic`: Frosted dark glassmorphism card with glowing border and subtle sheen.
+- `CreativeFallbackStyle.monogramMesh`: Smooth mesh gradient with modern glyph center.
+
+### Custom Creative Fallback Builder
+
+```dart
+SecureGatewayImage(
+  networkUrl: 'https://invalid.example.com/avatar.png',
+  size: 80,
+  creativeFallbackBuilder: (context, errorMessage) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.deepPurple,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Text('Custom Error: $errorMessage'),
+      ),
+    );
+  },
+)
+```
+
+---
+
+# ⚠️ Error Handling & Callbacks
+
+Receive rich error information through `onError` and `onImageError`:
+
+```dart
+SecureGatewayImage(
+  networkUrl: imageUrl,
+  initials: 'RD',
+  onError: (message, error, stackTrace) {
+    debugPrint('Error message: $message');
+  },
+  onImageError: (GatewayImageError errorInfo) {
+    debugPrint('Failed stage: ${errorInfo.stage}');
+    debugPrint('Attempts: ${errorInfo.retryAttempts}');
+    debugPrint('Duration: ${errorInfo.totalRetryDuration}');
+  },
+)
+```
 
 ---
 
@@ -727,157 +852,6 @@ This keeps the package small and reusable.
 
 ---
 
-# 🧪 Testing
-
-Run:
-
-```bash
-flutter pub get
-```
-
-Format:
-
-```bash
-dart format .
-```
-
-Analyze:
-
-```bash
-flutter analyze
-```
-
-Run tests:
-
-```bash
-flutter test
-```
-
-Run all checks:
-
-```bash
-dart format --output=none --set-exit-if-changed .
-flutter analyze
-flutter test
-```
-
----
-
-# 📱 Example Application
-
-The repository contains an example application under:
-
-```text
-example/
-```
-
-Run it:
-
-```bash
-cd example
-flutter pub get
-flutter run
-```
-
----
-
-# 📚 API Documentation
-
-Detailed API documentation is available at:
-
-```text
-doc/api.md
-```
-
-The primary public API is:
-
-```dart
-SecureGatewayImage
-```
-
-and:
-
-```dart
-GatewayImageStage
-```
-
----
-
-# 📦 Publishing to pub.dev
-
-Before publishing:
-
-```bash
-flutter pub publish --dry-run
-```
-
-Review all warnings.
-
-Then:
-
-```bash
-flutter pub publish
-```
-
----
-
-# 🔄 Versioning
-
-This package follows semantic versioning.
-
-```text
-MAJOR.MINOR.PATCH
-```
-
-For example:
-
-```text
-1.0.0
-1.0.1
-1.1.0
-2.0.0
-```
-
-Use a patch release for backwards-compatible bug fixes.
-
-Use a minor release for backwards-compatible features.
-
-Use a major release for breaking API changes.
-
----
-
-# 📝 Changelog
-
-See:
-
-```text
-CHANGELOG.md
-```
-
----
-
-# 🤝 Contributing
-
-Contributions are welcome.
-
-See:
-
-```text
-CONTRIBUTING.md
-```
-
----
-
-# 🔒 Security
-
-See:
-
-```text
-SECURITY.md
-```
-
----
-
 # 📄 License
 
 This project is licensed under the MIT License.
@@ -965,7 +939,7 @@ Flutter Developer | Mobile Application Developer
 
 Created and maintained by Rajat Das.
 
-GitHub: https://github.com/rajatdas_dev
+GitHub: https://github.com/rajatdas-dev
 
 ---
 

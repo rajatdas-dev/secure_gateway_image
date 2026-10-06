@@ -7,6 +7,8 @@ class InitialsAvatar extends StatefulWidget {
   const InitialsAvatar({
     required this.initials,
     this.size,
+    this.width,
+    this.height,
     this.backgroundColor,
     this.textStyle,
     this.borderRadius,
@@ -19,6 +21,10 @@ class InitialsAvatar extends StatefulWidget {
   final String initials;
 
   final double? size;
+
+  final double? width;
+
+  final double? height;
 
   final Color? backgroundColor;
 
@@ -89,6 +95,8 @@ class _InitialsAvatarState extends State<InitialsAvatar>
         avatarColorFor(widget.initials.isEmpty ? label : widget.initials);
 
     final radius = widget.borderRadius ?? BorderRadius.circular(999);
+    final effectiveWidth = widget.width ?? widget.size;
+    final effectiveHeight = widget.height ?? widget.size;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -99,7 +107,7 @@ class _InitialsAvatarState extends State<InitialsAvatar>
         ).value;
 
         return Opacity(
-          opacity: 0.55 + (progress * 0.45),
+          opacity: (0.55 + (progress * 0.45)).clamp(0.0, 1.0),
           child: Transform.scale(scale: 0.82 + (progress * 0.18), child: child),
         );
       },
@@ -122,8 +130,8 @@ class _InitialsAvatarState extends State<InitialsAvatar>
           ),
         ),
         child: SizedBox(
-          width: widget.size,
-          height: widget.size,
+          width: effectiveWidth,
+          height: effectiveHeight,
           child: Center(
             child: Text(
               label,
@@ -132,9 +140,9 @@ class _InitialsAvatarState extends State<InitialsAvatar>
                   widget.textStyle ??
                   TextStyle(
                     color: Colors.white,
-                    fontSize: widget.size == null
+                    fontSize: effectiveWidth == null
                         ? 20
-                        : (widget.size! * 0.36).clamp(12.0, 40.0),
+                        : (effectiveWidth * 0.36).clamp(12.0, 40.0),
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
                   ),

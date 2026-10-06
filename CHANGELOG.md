@@ -1,6 +1,13 @@
 # Changelog
 
-# Changelog
+## 0.0.3
+
+- Added automatic retry logic with configurable duration (defaults to max 3 seconds) and backoff.
+- Added comprehensive error messaging via `onError` callback and typed `GatewayImageError` metadata via `onImageError`.
+- Added creative fallback avatar (`CreativeFallbackAvatar`) with multiple visual styles (`gradientGlow`, `abstractPattern`, `glassmorphic`, `monogramMesh`) when user initials are not set.
+- Added error badge and tooltip indicator on the creative avatar.
+- Added support for custom `creativeFallbackBuilder`.
+- Updated test suite with comprehensive tests for retry cycles, error handling, and creative avatars.
 
 ## 0.0.2
 
