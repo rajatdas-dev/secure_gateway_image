@@ -2,7 +2,7 @@
 
 > Error-resilient image fallback widget for Flutter.
 
-**Created and maintained by [Rajat Das](https://github.com/rajatdas-dev).**
+**Created and maintained by [Rajat Das](https://www.linkedin.com/in/rajat-das-658248219).**
 
 An error-resilient Flutter image widget with a deterministic fallback pipeline:
 
@@ -24,6 +24,7 @@ An error-resilient Flutter image widget with a deterministic fallback pipeline:
 ## ✨ Features
 
 - 🌐 Network image as the primary source
+- ⚡ High-performance disk & memory caching (matching `cached_network_image`)
 - 🔁 Configurable network retry logic (max 3s default retry window)
 - 💾 Local `ImageProvider` fallback
 - 📦 Flutter asset fallback
@@ -39,7 +40,7 @@ An error-resilient Flutter image widget with a deterministic fallback pipeline:
 - ♿ Accessibility support
 - 📡 Fallback stage callbacks
 - 🌍 Flutter Web compatible
-- 🪶 Zero third-party runtime dependencies
+- 🪶 Lightweight (powered by standard `flutter_cache_manager`)
 - 🚫 No state-management dependency
 - 🔒 Null-safe
 - 🧪 Testable and deterministic
@@ -68,9 +69,9 @@ Handling these edge cases manually across every widget requires dozens of lines 
 - **The Problem**: Guest accounts, system bots, or incomplete user profiles often lack both a profile picture and a name/initials.
 - **The Solution**: When initials are absent, the widget renders **creative fallback avatars** (gradient glow, abstract geometric patterns, glassmorphic cards, or mesh gradients) with an error badge and tooltip.
 
-### 5. 🪶 Zero Bloat & Architectural Freedom
-- **The Problem**: Heavy image packages bundle monolithic caching engines, SQLite/Hive databases, or opinionated HTTP clients that create dependency conflicts.
-- **The Solution**: `secure_gateway_image` has **zero third-party runtime dependencies** and accepts any standard `ImageProvider`, leaving caching architecture decisions to your application layer.
+### 5. ⚡ Built-in Caching + Multi-Tier Fallback Flexibility
+- **The Problem**: Standard network images re-download on every render and lack fallback options, while other caching packages fail completely when an image URL goes down.
+- **The Solution**: `secure_gateway_image` bundles a battle-tested caching engine (matching `cached_network_image` via `flutter_cache_manager`) combined with an unbeatable multi-tier fallback pipeline.
 
 ---
 
@@ -80,7 +81,7 @@ Add the package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  secure_gateway_image: ^1.0.0
+  secure_gateway_image: ^0.1.0
 ```
 
 Then run:
@@ -194,25 +195,40 @@ If a source isn't provided, it is automatically skipped.
 
 ---
 
-# 💾 Local Cache
+# ⚡ _Built-in Network Image Cache_
 
-`secure_gateway_image` intentionally does **not** manage disk caching.
+`secure_gateway_image` includes a complete, high-performance network image caching system matching the caching architecture of `cached_network_image` (powered by `flutter_cache_manager`).
 
-The host application owns:
+### Features:
+- **Automatic Disk & Memory Caching**: Network images are automatically persisted to disk cache and loaded into memory on subsequent requests.
+- **Toggleable**: Control via `enableCache` (defaults to `true`).
+- **Custom Cache Keys**: Set `cacheKey` to control cache invalidation independently from dynamic URLs.
+- **Custom Cache Managers**: Supply a custom `BaseCacheManager` (e.g., custom directory, max capacity, or TTL).
+- **Disk Cache Resizing**: Use `maxWidthDiskCache` and `maxHeightDiskCache` to resize images on disk before caching.
+- **Cache Eviction**: Invalidate images at runtime using `SecureGatewayImage.evictFromCache(url)` or `SecureGatewayCachedImageProvider.evictFromCache(url)`.
+- **Standalone Provider**: Use `SecureGatewayCachedImageProvider` anywhere an `ImageProvider` is accepted.
 
-- HTTP caching
-- disk storage
-- cache expiration
-- cache eviction
-- stale-while-revalidate
-- database storage
-- encrypted storage
-- authentication
-- retry policies
+```dart
+SecureGatewayImage(
+  networkUrl: 'https://example.com/avatar.png',
+  cacheKey: 'user_avatar_101',
+  enableCache: true,
+  size: 64,
+  initials: 'Rajat Das',
+)
+```
 
-The widget only receives an `ImageProvider`.
+To manually evict an image from cache:
 
-For example, with a cached `File`:
+```dart
+await SecureGatewayImage.evictFromCache('https://example.com/avatar.png');
+```
+
+---
+
+# 💾 Local Cache Fallback (`cachedImage`)
+
+If you want a secondary fallback tier using an existing local `ImageProvider` (such as a local database file or cached bytes), provide `cachedImage`:
 
 ```dart
 import 'dart:io';
@@ -235,8 +251,6 @@ SecureGatewayImage(
   initials: 'Rajat Das',
 )
 ```
-
-This design keeps caching concerns outside the UI package.
 
 ---
 
@@ -761,94 +775,69 @@ SecureGatewayImage(
 
 # 🏗️ Architecture
 
-The package intentionally follows a simple responsibility boundary.
+The package follows a clean, decoupled pipeline designed for maximum resilience:
 
 ```text
-┌─────────────────────────────────────┐
-│          Application Layer          │
-│                                     │
-│  API / Dio / Repository / Database │
-│             │                       │
-│             │ cached image          │
-│             ▼                       │
-└─────────────┬───────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────┐
-│      SecureGatewayImage             │
-│                                     │
-│  Network                            │
-│     ↓                               │
-│  Cached ImageProvider               │
-│     ↓                               │
-│  Asset                              │
-│     ↓                               │
-│  Initials Avatar                    │
-└─────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                  SecureGatewayImage                    │
+│                                                        │
+│  1. Network Image + Built-in Disk & Memory Cache       │
+│     (flutter_cache_manager engine / auto-evict on retry)│
+│                         ↓ (if fails / error)           │
+│  2. Local Cached ImageProvider (FileImage / Memory)    │
+│                         ↓ (if fails / null)            │
+│  3. Asset Image Fallback                               │
+│                         ↓ (if fails / null)            │
+│  4. Initials Avatar (Deterministic Color & Entrance)   │
+│                         ↓ (if no initials)             │
+│  5. Creative Fallback Avatar (Mesh, Glow, etc.)        │
+└────────────────────────────────────────────────────────┘
 ```
 
-The package does **not** own the application's data layer.
+The package provides automated caching out of the box while remaining decoupled from your application-specific data layer.
 
 ---
 
 # 🚫 What This Package Does NOT Do
 
-`secure_gateway_image` does not provide:
+To maintain a clean separation of concerns, `secure_gateway_image` does not dictate or bundle:
 
-- HTTP client
-- Disk cache
-- Database
-- Authentication
-- Token refresh
-- Retry policy
-- Cache eviction
-- Background downloads
-- State management
-- Bloc
-- Riverpod
-- Provider
-- GetX
-- Service locator
+- Database management (SQLite, Hive, Isar schema management)
+- Authentication & Token refresh protocols (pass custom `headers` or custom `cacheManager`)
+- Background sync / daemon downloads
+- State management frameworks (Bloc, Riverpod, Provider, GetX)
+- Service locators
 
-These responsibilities should remain in the application layer.
+These responsibilities remain cleanly within your application's domain layer.
 
 ---
 
-# 🧠 Why No Built-in Cache?
+# 🧠 Smart Decoupled Architecture
 
-A common mistake would be to make this widget responsible for downloading and caching images.
+### Why not tightly couple the widget to an ad-hoc caching or database implementation?
 
-That creates unnecessary coupling:
+A common mistake in image packages is forcing developers to adopt proprietary caching protocols, SQLite schemas, or heavy state managers. That creates unnecessary coupling:
 
 ```text
-Widget
- ├── HTTP
- ├── Cache
- ├── Database
- ├── File system
- ├── Retry
- └── Rendering
+Widget (Coupled)
+ ├── Monolithic Database
+ ├── Proprietary Cache Engine
+ ├── Rigid State Management
+ └── Opinionated Auth Flow
 ```
 
-Instead, this package follows:
+Instead, `secure_gateway_image` uses the Flutter community-standard **`flutter_cache_manager`** (the same battle-tested engine powering `cached_network_image`) and pairs it with standard `ImageProvider` abstractions:
 
 ```text
-Repository
-    │
-    ├── HTTP
-    ├── Cache
-    └── Persistence
-          │
-          ▼
 SecureGatewayImage
-    │
-    ├── Render network
-    ├── Render cache
-    ├── Render asset
-    └── Render avatar
+ ├── Built-in Network Cache (Standard BaseCacheManager)
+ ├── Custom Cache Manager Injection (Optional)
+ ├── Secondary Local Fallback (Any ImageProvider / File / Memory)
+ ├── Asset Fallback
+ └── Procedural Avatars (Zero-storage deterministic colors)
 ```
 
-This keeps the package small and reusable.
+This delivers effortless, zero-config network caching for 99% of use cases, while preserving the freedom to inject custom cache managers or secondary local persistence layers whenever needed.
 
 ---
 

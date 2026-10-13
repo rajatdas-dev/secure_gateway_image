@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
+import '../cache/secure_gateway_cached_image_provider.dart';
 import '../models/creative_fallback_style.dart';
 import '../models/gateway_image_error.dart';
 import '../models/gateway_image_stage.dart';
@@ -35,6 +37,11 @@ class SecureGatewayImage extends StatefulWidget {
     this.headers,
     this.cacheWidth,
     this.cacheHeight,
+    this.enableCache = true,
+    this.cacheManager,
+    this.cacheKey,
+    this.maxWidthDiskCache,
+    this.maxHeightDiskCache,
     this.backgroundColor,
     this.avatarTextStyle,
     this.animateAvatar = true,
@@ -64,6 +71,20 @@ class SecureGatewayImage extends StatefulWidget {
     this.customErrorMessage,
     super.key,
   });
+
+  /// Evicts the network image for [url] or [cacheKey] from both
+  /// Flutter's in-memory image cache and local disk cache.
+  static Future<void> evictFromCache(
+    String url, {
+    String? cacheKey,
+    BaseCacheManager? cacheManager,
+  }) {
+    return SecureGatewayCachedImageProvider.evictFromCache(
+      url,
+      cacheKey: cacheKey,
+      cacheManager: cacheManager,
+    );
+  }
 
   /// Primary remote image URL.
   final String? networkUrl;
@@ -113,6 +134,24 @@ class SecureGatewayImage extends StatefulWidget {
 
   /// Height used when decoding the image.
   final int? cacheHeight;
+
+  /// Whether to cache the network image locally using [cacheManager].
+  /// Defaults to true, matching the caching behavior of `cached_network_image`.
+  final bool enableCache;
+
+  /// Custom [BaseCacheManager] used to cache network images.
+  /// If null, [SecureGatewayCachedImageProvider.defaultCacheManager] is used.
+  final BaseCacheManager? cacheManager;
+
+  /// Custom cache key used by [cacheManager].
+  /// If null, [networkUrl] is used as the key.
+  final String? cacheKey;
+
+  /// Maximum width to resize and store in disk cache (if using [ImageCacheManager]).
+  final int? maxWidthDiskCache;
+
+  /// Maximum height to resize and store in disk cache (if using [ImageCacheManager]).
+  final int? maxHeightDiskCache;
 
   /// Avatar background color.
   final Color? backgroundColor;
@@ -225,7 +264,10 @@ class _SecureGatewayImageState extends State<SecureGatewayImage> {
 
     if (oldWidget.networkUrl != widget.networkUrl ||
         oldWidget.cachedImage != widget.cachedImage ||
-        oldWidget.assetPath != widget.assetPath) {
+        oldWidget.assetPath != widget.assetPath ||
+        oldWidget.cacheKey != widget.cacheKey ||
+        oldWidget.cacheManager != widget.cacheManager ||
+        oldWidget.enableCache != widget.enableCache) {
       _retryTimer?.cancel();
       _retryTimer = null;
       _retryAttempt = 0;
@@ -347,17 +389,43 @@ class _SecureGatewayImageState extends State<SecureGatewayImage> {
     );
   }
 
+  ImageProvider<Object> _getNetworkImageProvider() {
+    final ImageProvider<Object> provider;
+    if (widget.enableCache) {
+      provider = SecureGatewayCachedImageProvider(
+        widget.networkUrl!,
+        cacheKey: widget.cacheKey,
+        cacheManager: widget.cacheManager,
+        headers: widget.headers,
+        maxWidth: widget.maxWidthDiskCache,
+        maxHeight: widget.maxHeightDiskCache,
+      );
+    } else {
+      provider = NetworkImage(
+        widget.networkUrl!,
+        headers: widget.headers,
+      );
+    }
+
+    if (widget.cacheWidth != null || widget.cacheHeight != null) {
+      return ResizeImage(
+        provider,
+        width: widget.cacheWidth,
+        height: widget.cacheHeight,
+      );
+    }
+
+    return provider;
+  }
+
   Widget _buildNetwork() {
-    return Image.network(
-      widget.networkUrl!,
+    return Image(
+      image: _getNetworkImageProvider(),
       key: _networkKey,
       width: widget.width ?? widget.size,
       height: widget.height ?? widget.size,
       fit: widget.fit,
       alignment: widget.alignment,
-      headers: widget.headers,
-      cacheWidth: widget.cacheWidth,
-      cacheHeight: widget.cacheHeight,
       semanticLabel: widget.semanticLabel,
       excludeFromSemantics: widget.excludeFromSemantics,
       filterQuality: widget.filterQuality,
@@ -381,9 +449,14 @@ class _SecureGatewayImageState extends State<SecureGatewayImage> {
               _retryAttempt++;
               _accumulatedRetryDuration += delay;
               _networkKey = ValueKey('network-${widget.networkUrl}-attempt-$_retryAttempt');
-              PaintingBinding.instance.imageCache.evict(
-                NetworkImage(widget.networkUrl!, headers: widget.headers),
-              );
+              PaintingBinding.instance.imageCache.evict(_getNetworkImageProvider());
+              if (widget.enableCache) {
+                final key = widget.cacheKey ?? widget.networkUrl!;
+                final cm = widget.cacheManager ?? SecureGatewayCachedImageProvider.defaultCacheManager;
+                try {
+                  cm.removeFile(key).ignore();
+                } catch (_) {}
+              }
               widget.onRetry?.call(_retryAttempt, _accumulatedRetryDuration);
               if (mounted) {
                 setState(() {});

@@ -45,142 +45,155 @@ class _ExamplePageState extends State<ExamplePage> {
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _buildCard(
-            title: '1. Network Retry (Max 3s) → Initials Fallback',
-            subtitle:
-                'Attempts retries for up to 3s with backoff, captures the error message, then falls back to user initials.',
-            child: Column(
-              children: [
-                Center(
-                  child: SecureGatewayImage(
-                    networkUrl: 'https://invalid.example.invalid/avatar.png',
-                    initials: 'Rajat Das',
-                    size: 110,
-                    borderRadius: BorderRadius.circular(24),
-                    retryDuration: const Duration(seconds: 3),
-                    retryInterval: const Duration(seconds: 1),
-                    onRetry: (attempt, elapsed) {
-                      setState(() {
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            _buildCard(
+              title: '1. Network Retry (Max 3s) → Initials Fallback',
+              subtitle:
+              'Attempts retries for up to 3s with backoff, captures the error message, then falls back to user initials.',
+              child: Column(
+                children: [
+                  Center(
+                    child: SecureGatewayImage(
+                      networkUrl: 'https://invalid.example.invalid/avatar.png',
+                      initials: 'Rajat Das',
+                      size: 110,
+                      borderRadius: BorderRadius.circular(24),
+                      retryDuration: const Duration(seconds: 3),
+                      retryInterval: const Duration(seconds: 1),
+                      onRetry: (attempt, elapsed) {
                         _retryStatus = 'Retrying attempt #$attempt (${elapsed.inMilliseconds}ms elapsed)';
-                      });
-                    },
-                    onError: (message, error, stackTrace) {
-                      setState(() {
+                      },
+                      onError: (message, error, stackTrace) {
                         _retryStatus = 'Retry timed out (3s max). Switched to fallback.';
                         _lastErrorMessage = message;
-                      });
-                    },
-                    onStageChanged: (stage) {
-                      debugPrint('Current stage: $stage');
-                    },
+                      },
+                      onStageChanged: (stage) {
+                        debugPrint('Current stage: $stage');
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Status: $_retryStatus',
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Error message: $_lastErrorMessage',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFF87171)),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Status: $_retryStatus',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Error message: $_lastErrorMessage',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFFF87171)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          _buildCard(
-            title: '2. Creative Fallback (Initials NOT set)',
-            subtitle:
-                'When the user does not set initials, the widget renders an aesthetically styled creative fallback with an error badge and tooltip.',
-            child: Wrap(
-              alignment: WrapAlignment.spaceAround,
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                _buildStyleItem(
-                  label: 'Gradient Glow',
-                  child: const SecureGatewayImage(
-                    networkUrl: 'https://invalid.example.invalid/avatar.png',
-                    enableRetry: false,
-                    size: 90,
-                    creativeFallbackStyle: CreativeFallbackStyle.gradientGlow,
-                    showErrorBadge: true,
-                  ),
-                ),
-                _buildStyleItem(
-                  label: 'Abstract Pattern',
-                  child: const SecureGatewayImage(
-                    networkUrl: 'https://invalid.example.invalid/avatar.png',
-                    enableRetry: false,
-                    size: 90,
-                    creativeFallbackStyle: CreativeFallbackStyle.abstractPattern,
-                    showErrorBadge: true,
-                  ),
-                ),
-                _buildStyleItem(
-                  label: 'Glassmorphic',
-                  child: const SecureGatewayImage(
-                    networkUrl: 'https://invalid.example.invalid/avatar.png',
-                    enableRetry: false,
-                    size: 90,
-                    creativeFallbackStyle: CreativeFallbackStyle.glassmorphic,
-                    showErrorBadge: true,
-                  ),
-                ),
-                _buildStyleItem(
-                  label: 'Monogram Mesh',
-                  child: const SecureGatewayImage(
-                    networkUrl: 'https://invalid.example.invalid/avatar.png',
-                    enableRetry: false,
-                    size: 90,
-                    creativeFallbackStyle: CreativeFallbackStyle.monogramMesh,
-                    showErrorBadge: true,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          _buildCard(
-            title: '3. Initials Avatar Only',
-            subtitle: 'Directly generated initials avatar with deterministic colors.',
-            child: const Center(
-              child: SecureGatewayImage(
-                initials: 'Secure Gateway',
-                size: 100,
-                borderRadius: BorderRadius.all(Radius.circular(20)),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 32),
-          _buildCard(
-            title: '4. Custom Avatar Builder',
-            subtitle: 'Full customization through custom builders when needed.',
-            child: Center(
-              child: SecureGatewayImage(
-                initials: 'RD',
-                size: 100,
-                avatarBuilder: _customAvatarBuilder,
+            const SizedBox(height: 32),
+            _buildCard(
+              title: '2. Creative Fallback (Initials NOT set)',
+              subtitle:
+              'When the user does not set initials, the widget renders an aesthetically styled creative fallback with an error badge and tooltip.',
+              child: Wrap(
+                alignment: WrapAlignment.spaceAround,
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _buildStyleItem(
+                    label: 'Gradient Glow',
+                    child: const SecureGatewayImage(
+                      networkUrl: 'https://invalid.example.invalid/avatar.png',
+                      enableRetry: false,
+                      size: 90,
+                      creativeFallbackStyle: CreativeFallbackStyle.gradientGlow,
+                      showErrorBadge: true,
+                    ),
+                  ),
+                  _buildStyleItem(
+                    label: 'Abstract Pattern',
+                    child: const SecureGatewayImage(
+                      networkUrl: 'https://invalid.example.invalid/avatar.png',
+                      enableRetry: false,
+                      size: 90,
+                      creativeFallbackStyle: CreativeFallbackStyle.abstractPattern,
+                      showErrorBadge: true,
+                    ),
+                  ),
+                  _buildStyleItem(
+                    label: 'Glassmorphic',
+                    child: const SecureGatewayImage(
+                      networkUrl: 'https://invalid.example.invalid/avatar.png',
+                      enableRetry: false,
+                      size: 90,
+                      creativeFallbackStyle: CreativeFallbackStyle.glassmorphic,
+                      showErrorBadge: true,
+                    ),
+                  ),
+                  _buildStyleItem(
+                    label: 'Monogram Mesh',
+                    child: const SecureGatewayImage(
+                      networkUrl: 'https://invalid.example.invalid/avatar.png',
+                      enableRetry: false,
+                      size: 90,
+                      creativeFallbackStyle: CreativeFallbackStyle.monogramMesh,
+                      showErrorBadge: true,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 32),
+            _buildCard(
+              title: '3. Initials Avatar Only',
+              subtitle: 'Directly generated initials avatar with deterministic colors.',
+              child: const Center(
+                child: SecureGatewayImage(
+                  initials: 'Secure Gateway',
+                  size: 100,
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            _buildCard(
+              title: '4. Custom Avatar Builder',
+              subtitle: 'Full customization through custom builders when needed.',
+              child: Center(
+                child: SecureGatewayImage(
+                  initials: 'RD',
+                  size: 100,
+                  avatarBuilder: _customAvatarBuilder,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            _buildCard(
+              title: '5. Cached Network Image System',
+              subtitle:
+                  'Built-in disk & memory caching with custom cache keys, cache manager, and eviction support.',
+              child: Center(
+                child: SecureGatewayImage(
+                  networkUrl: 'https://picsum.photos/200',
+                  cacheKey: 'example_picsum_200',
+                  size: 100,
+                  borderRadius: BorderRadius.circular(20),
+                  enableCache: true,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
